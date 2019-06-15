@@ -12,16 +12,18 @@ module.exports = {
     rules: [
       { 
         test: /\.tsx?$/, 
-        loader: "awesome-typescript-loader" 
+        loader: 'awesome-typescript-loader' 
       },
       { 
-        enforce: "pre", 
+        enforce: 'pre', 
         test: /\.js$/, 
-        loader: "source-map-loader" }
+        loader: 'source-map-loader' 
+      }
     ]
   },
   externals: {
-    "react": "React",
-    "react-dom": "ReactDOM"
+    'react': 'React',
+    'react-dom': 'ReactDOM',
+    'socket.io': 'io'
   }
 }

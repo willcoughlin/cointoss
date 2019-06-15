@@ -11,7 +11,7 @@ class App extends Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
 
-    const initialNewId = this._makeId();    
+    const initialNewId = this.makeId();    
     this.state = {
       newGameId: initialNewId
     };
@@ -21,21 +21,22 @@ class App extends Component<{}, AppState> {
     return (
       <BrowserRouter>
         <div>
-          <Link to={ this.state.newGameId } onClick={ this._setNewGameId.bind(this) }>
+          <Link to={ this.state.newGameId } onClick={ this.setNewGameId.bind(this) }>
             <button type='button'>New Game</button> 
           </Link>
-          <Route path='/:id' component={Game}></Route>
+          {/* <Route path='/:id' component={Game}></Route> */}
+          <Route path='/:id' render={(props) => <Game {...props} key={ Math.random() } />}></Route>
         </div>
       </BrowserRouter>
     );
   }
 
-  _makeId() {
+  private makeId() {
     return Math.random().toString(36).substring(7);
   }
 
-  _setNewGameId() {
-    const newGameId = this._makeId();
+  private setNewGameId() {
+    const newGameId = this.makeId();
     this.setState({
       newGameId: newGameId
     });
