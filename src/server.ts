@@ -10,7 +10,7 @@ enum PortNumber {
 const app = express();
 app.use(express.static(STATIC_DIR));
 
-app.get('/', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(STATIC_DIR, 'index.html'));
 });
 
