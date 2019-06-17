@@ -64,6 +64,7 @@ class GameServer {
 
     // game events
     socket.on('call', (choice: string) => { socket.to(gameId).emit('call', choice) });
+    socket.on('flip', () => { this.socketServer.in(gameId).emit('flip', Math.random() >= 0.5 ? 'heads' : 'tails' ) });
 
     // leave/disconnect events
     socket.on('leave', () => { socket.disconnect() });

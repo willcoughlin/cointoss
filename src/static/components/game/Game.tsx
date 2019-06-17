@@ -13,11 +13,12 @@ enum PlayState {
 }
 
 type GameState = {
+  socket: io.Server
+  errors: string[],
   playState?: PlayState,
   isPlayer1?: boolean  // p2 may become p1 if p1 leaves the game,
-  socket: io.Server
-  errors: string[]
-  headsOrTails: string
+  headsOrTails: string,
+  result: string
 };
 
 class Game extends Component<GameProps, GameState> {
@@ -25,11 +26,12 @@ class Game extends Component<GameProps, GameState> {
     super(props);
 
     this.state = {
-      playState: null,
-      isPlayer1: null,
       socket: io(),
       errors: [],
-      headsOrTails: null
+      playState: null,
+      isPlayer1: null,
+      headsOrTails: null,
+      result: null
     };
 
     this.configureSocketConnection();
@@ -64,28 +66,33 @@ class Game extends Component<GameProps, GameState> {
               <button type='button' onClick={ () => this.sendCall.bind(this)('tails') }>Tails</button>
             </div>
           );
-        } else {
-          return <h1>Waiting for player 1 to call.</h1>;
-        }
+        } 
+        
+        return <h1>Waiting for player 1 to call.</h1>;
       
       case PlayState.WaitingForFlip:
           if (!this.state.isPlayer1) {
             return (
               <div>
                 <h1>You are {this.state.headsOrTails }. Flip it.</h1>
-                <button type='button'>Flip</button>
+                <button type='button' onClick={ () => this.state.socket.emit('flip') }>Flip</button>
               </div>
             );
-          } else {
-            return (
-              <div>
-                <h1>You are { this.state.headsOrTails }. Waiting for player 2 to flip.</h1>
-              </div>
-            );
-          }
+          } 
+          
+          return (
+            <div>
+              <h1>You are { this.state.headsOrTails }. Waiting for player 2 to flip.</h1>
+            </div>
+          );
+          
 
       case PlayState.Done:
-        return <h1>Done.</h1>
+        if (this.state.headsOrTails === this.state.result) {
+          return <h1>It's {this.state.result }. You win!</h1>;
+        }
+
+        return <h1>It's { this.state.result }. You lose!</h1>;
     }
   }
 
@@ -108,6 +115,7 @@ class Game extends Component<GameProps, GameState> {
     this.state.socket.on('player2Join', this.handlePlayer2Join.bind(this));
     this.state.socket.on('playerDisconnect', this.handlePlayerDisconnect.bind(this));
     this.state.socket.on('call', (choice: string) => { this.handleCall.bind(this)(choice) });
+    this.state.socket.on('flip', (result: string) => { this.handleFlip.bind(this)(result) });
     this.state.socket.on('error', (err: string) => { this.state.errors.push(err) });
   }
 
@@ -135,10 +143,19 @@ class Game extends Component<GameProps, GameState> {
   }
 
   /*
+   * Show result of game
+   */
+  private handleFlip(result: string) {
+    this.setState({
+      result: result,
+      playState: PlayState.Done
+    });
+  }
+
+  /*
    * Are we player 1? Update state accordingly.
    */
   private handleSetIsPlayer1(isPlayer1: boolean) {
-    console.log(`You are Player ${isPlayer1 ? '1' : '2'}`);
     this.setState({
       isPlayer1: isPlayer1,
       playState: isPlayer1 ? PlayState.WaitingForPlayer2 : PlayState.WaitingForCall
@@ -149,7 +166,6 @@ class Game extends Component<GameProps, GameState> {
    * If we are player 1, we get sent this event when p2 joins.
    */
   private handlePlayer2Join() {
-    console.log('Player 2 has joined');
     this.setState({
       playState: PlayState.WaitingForCall
     });
@@ -160,7 +176,6 @@ class Game extends Component<GameProps, GameState> {
    * now player 1 if not before.
    */
   private handlePlayerDisconnect() {
-    console.log(`Player ${this.state.isPlayer1 ? '2' : '1'} has disconnected`);
     if (!this.state.isPlayer1) {
       console.log('You are now player 1!');
     }
