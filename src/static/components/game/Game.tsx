@@ -8,13 +8,16 @@ interface GameProps extends RouteComponentProps<{ id: string }> {}
 enum PlayState {
   WaitingForPlayer2,  // when one player is in the game 
   WaitingForCall,     // when two are in the game and waiting on p1 to call
-  Done                // after p1 has called and result determined
+  WaitingForFlip,     // after p1 has called, waiting on p2 to flip
+  Done                // after p2 has flipped
 }
 
 type GameState = {
-  playState: PlayState,
+  playState?: PlayState,
   isPlayer1?: boolean  // p2 may become p1 if p1 leaves the game,
   socket: io.Server
+  errors: string[]
+  headsOrTails: string
 };
 
 class Game extends Component<GameProps, GameState> {
@@ -22,57 +25,149 @@ class Game extends Component<GameProps, GameState> {
     super(props);
 
     this.state = {
-      playState: PlayState.WaitingForPlayer2,
+      playState: null,
       isPlayer1: null,
-      socket: io()
+      socket: io(),
+      errors: [],
+      headsOrTails: null
     };
 
     this.configureSocketConnection();
   }
 
-  // tell the server we are leaving
+  render() {
+    // We are connecting
+    if (this.state.playState == null) {
+      return <h1>Connecting...</h1>      
+    }
+    
+    // We could not join the game.
+    if (this.state.errors && this.state.errors.length) {
+      return (
+      <div>
+        { this.state.errors.map(err => <h1>{ err }</h1>) }
+      </div>
+      );
+    }
+
+    // We are in a game
+    switch (this.state.playState) {
+      case PlayState.WaitingForPlayer2:
+        return <h1>Waiting for player 2 to join.</h1>;
+      
+      case PlayState.WaitingForCall:
+        if (this.state.isPlayer1) {
+          return (
+            <div>
+              <h1>Call it.</h1>
+              <button type='button' onClick={ () => this.sendCall.bind(this)('heads') }>Heads</button>
+              <button type='button' onClick={ () => this.sendCall.bind(this)('tails') }>Tails</button>
+            </div>
+          );
+        } else {
+          return <h1>Waiting for player 1 to call.</h1>;
+        }
+      
+      case PlayState.WaitingForFlip:
+          if (!this.state.isPlayer1) {
+            return (
+              <div>
+                <h1>You are {this.state.headsOrTails }. Flip it.</h1>
+                <button type='button'>Flip</button>
+              </div>
+            );
+          } else {
+            return (
+              <div>
+                <h1>You are { this.state.headsOrTails }. Waiting for player 2 to flip.</h1>
+              </div>
+            );
+          }
+
+      case PlayState.Done:
+        return <h1>Done.</h1>
+    }
+  }
+
+  /*
+   * Used to tell the server we are leaving if "New Game" is clicked.
+   */
   componentWillUnmount() {
     this.state.socket.emit('leave');
   }
 
-  render() {
-    if (this.state.playState === PlayState.WaitingForPlayer2) {
-      return <h1>Waiting for player 2 to join</h1>;
-    } else if (this.state.playState == PlayState.WaitingForCall) {
-      return <h1>Waiting for player 1 to call</h1>;
-    }
+  /* 
+   * Join a game and set event handlers.
+   */
+  private configureSocketConnection() {
+    // tell server we are joining this game
+    this.state.socket.emit('joinGame', this.props.match.params.id);
+    
+    // server event handlers
+    this.state.socket.on('setIsPlayer1', (isPlayer1: boolean) => { this.handleSetIsPlayer1.bind(this)(isPlayer1) });
+    this.state.socket.on('player2Join', this.handlePlayer2Join.bind(this));
+    this.state.socket.on('playerDisconnect', this.handlePlayerDisconnect.bind(this));
+    this.state.socket.on('call', (choice: string) => { this.handleCall.bind(this)(choice) });
+    this.state.socket.on('error', (err: string) => { this.state.errors.push(err) });
   }
 
-  private configureSocketConnection() {
-    this.state.socket.emit('joinGame', this.props.match.params.id);
-
-    // TODO: refactor listeners into named methods
+  /*
+   * Sends the player's call to the server
+   */
+  private sendCall(choice: string) {
+    this.state.socket.emit('call', choice);
     
-    this.state.socket.on('setIsPlayer1', (isPlayer1: boolean) => {
-      console.log(`You are Player ${isPlayer1 ? '1' : '2'}`);
-      this.setState({
-        isPlayer1: isPlayer1,
-        playState: isPlayer1 ? PlayState.WaitingForPlayer2 : PlayState.WaitingForCall
-      });
+    // update state
+    this.handleCall(choice);
+  }
+
+  /*
+   * Updates state following p1 call
+   */
+  private handleCall(choice: string) {
+    // if player 2, your h or t value is the opposite of the p1 call
+    const headsOrTails = this.state.isPlayer1 ? choice : (choice === 'heads' ? 'tails' : 'heads');
+    
+    this.setState({
+      playState: PlayState.WaitingForFlip,
+      headsOrTails: headsOrTails
     });
+  }
 
-    this.state.socket.on('player2Join', () => {
-      console.log('Player 2 has joined');
-      this.setState({
-        playState: PlayState.WaitingForCall
-      });
+  /*
+   * Are we player 1? Update state accordingly.
+   */
+  private handleSetIsPlayer1(isPlayer1: boolean) {
+    console.log(`You are Player ${isPlayer1 ? '1' : '2'}`);
+    this.setState({
+      isPlayer1: isPlayer1,
+      playState: isPlayer1 ? PlayState.WaitingForPlayer2 : PlayState.WaitingForCall
     });
+  }
 
-    this.state.socket.on('playerDisconnect', () => {
-      console.log(`Player ${this.state.isPlayer1 ? '2' : '1'} has disconnected`);
-      if (!this.state.isPlayer1) {
-        console.log('You are now player 1!');
-      }
+  /*
+   * If we are player 1, we get sent this event when p2 joins.
+   */
+  private handlePlayer2Join() {
+    console.log('Player 2 has joined');
+    this.setState({
+      playState: PlayState.WaitingForCall
+    });
+  }
 
-      this.setState({
-        isPlayer1: true,
-        playState: PlayState.WaitingForPlayer2
-      });
+  /*
+   * When the other player disconnects, update state and make sure we are 
+   * now player 1 if not before.
+   */
+  private handlePlayerDisconnect() {
+    console.log(`Player ${this.state.isPlayer1 ? '2' : '1'} has disconnected`);
+    if (!this.state.isPlayer1) {
+      console.log('You are now player 1!');
+    }
+
+    this.setState({
+      isPlayer1: true,
+      playState: PlayState.WaitingForPlayer2
     });
   }
 }
