@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { BrowserRouter, Route, Link } from 'react-router-dom'; 
-import Game from './game/Game';
+import Game from '../game/Game';
+import './App.css';
 
 type AppState = {
   newGameId: string
