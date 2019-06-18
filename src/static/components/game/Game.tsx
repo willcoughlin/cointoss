@@ -7,9 +7,9 @@ interface GameProps extends RouteComponentProps<{ id: string }> {}
 
 enum PlayState {
   WaitingForPlayer2,  // when one player is in the game 
-  WaitingForCall,     // when two are in the game and waiting on p1 to call
-  WaitingForFlip,     // after p1 has called, waiting on p2 to flip
-  Done                // after p2 has flipped
+  WaitingForCall,     // when two are in the game and waiting on p2 to call
+  WaitingForFlip,     // after p2 has called, waiting on p1 to flip
+  Done                // after p1 has flipped
 }
 
 type GameState = {
@@ -38,18 +38,18 @@ class Game extends Component<GameProps, GameState> {
   }
 
   render() {
-    // We are connecting
-    if (this.state.playState == null) {
+    // We have not joined game
+    if (this.state.playState === null) {
+      if (this.state.errors.length) {
+        return (
+          <div>
+            { this.state.errors.map(err => <h1>{ err }</h1>) }
+          </div>
+          );
+      }
+
+      // If no errors, we haven't connected yet
       return <h1>Connecting...</h1>      
-    }
-    
-    // We could not join the game.
-    if (this.state.errors && this.state.errors.length) {
-      return (
-      <div>
-        { this.state.errors.map(err => <h1>{ err }</h1>) }
-      </div>
-      );
     }
 
     // We are in a game
@@ -59,19 +59,19 @@ class Game extends Component<GameProps, GameState> {
       
       case PlayState.WaitingForCall:
         if (this.state.isPlayer1) {
-          return (
-            <div>
-              <h1>Call it.</h1>
-              <button type='button' onClick={ () => this.sendCall.bind(this)('heads') }>Heads</button>
-              <button type='button' onClick={ () => this.sendCall.bind(this)('tails') }>Tails</button>
-            </div>
-          );
+          return <h1>Waiting for player 2 to call.</h1>;
         } 
+        return (
+          <div>
+            <h1>Call it.</h1>
+            <button type='button' onClick={ () => this.sendCall.bind(this)('heads') }>Heads</button>
+            <button type='button' onClick={ () => this.sendCall.bind(this)('tails') }>Tails</button>
+          </div>
+        );
         
-        return <h1>Waiting for player 1 to call.</h1>;
       
       case PlayState.WaitingForFlip:
-          if (!this.state.isPlayer1) {
+          if (this.state.isPlayer1) {
             return (
               <div>
                 <h1>You are {this.state.headsOrTails }. Flip it.</h1>
@@ -82,7 +82,7 @@ class Game extends Component<GameProps, GameState> {
           
           return (
             <div>
-              <h1>You are { this.state.headsOrTails }. Waiting for player 2 to flip.</h1>
+              <h1>You are { this.state.headsOrTails }. Waiting for player 1 to flip.</h1>
             </div>
           );
           
@@ -116,7 +116,7 @@ class Game extends Component<GameProps, GameState> {
     this.state.socket.on('playerDisconnect', this.handlePlayerDisconnect.bind(this));
     this.state.socket.on('call', (choice: string) => { this.handleCall.bind(this)(choice) });
     this.state.socket.on('flip', (result: string) => { this.handleFlip.bind(this)(result) });
-    this.state.socket.on('error', (err: string) => { this.state.errors.push(err) });
+    this.state.socket.on('err', (err: string) => { this.setState({ errors: this.state.errors.concat([err]) }) });
   }
 
   /*

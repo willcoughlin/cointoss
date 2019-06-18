@@ -41,6 +41,7 @@ class GameServer {
         // if game is full, notify user
         socket.emit('err', 'Game is full!');//
         this.socketLog(socket.id, 'Game exists and is full.');
+        return;
       } else {
         // set game to full
         this.activeGames.get(gameId).isFull = true;
