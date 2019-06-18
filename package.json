@@ -4,7 +4,7 @@
   "description": "A coin toss game with WebSockets!",
   "main": "dist/server.js",
   "scripts": {
-    "build-server": "tsc",
+    "build-server": "node_modules\\.bin\\tsc",
     "build-client": "node_modules\\.bin\\webpack",
     "build-all": "npm run build-server && npm run build-client",
     "clean": "del /s \"dist\\*.js\" && del /s \"dist\\*.js.map\"",
