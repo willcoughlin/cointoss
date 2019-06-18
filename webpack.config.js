@@ -6,7 +6,7 @@ module.exports = {
   },
   devtool: 'source-map',
   resolve: {
-    extensions: ['.ts', '.tsx', '.js', '.json']
+    extensions: ['.ts', '.tsx', '.js', '.json', '.css']
   },
   module: {
     rules: [
@@ -18,6 +18,14 @@ module.exports = {
         enforce: 'pre', 
         test: /\.js$/, 
         loader: 'source-map-loader' 
+      },
+      {
+        test: /\.css$/,
+        use: [
+          { loader: 'style-loader' },
+          { loader: 'css-modules-typescript-loader' },
+          { loader: 'css-loader' }
+        ]
       }
     ]
   },

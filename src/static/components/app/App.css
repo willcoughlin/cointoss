@@ -1,0 +1,25 @@
+body {
+  margin: unset;
+  font-family: Arial, Helvetica, sans-serif
+}
+
+button {
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+.topBar {
+  width: 100%;
+  background: black;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.topBar button {
+  background-color: white;
+  color: black;
+  border: 1px solid gray;
+  margin: 0 10px;
+}
